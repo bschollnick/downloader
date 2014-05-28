@@ -1,0 +1,9 @@
+[Core]
+Name = deviantart
+Module = deviantart
+
+[Documentation]
+Author = Benjamin Schollnick
+Version = 0.1
+Website = http://lotsofplugins.com
+Description = DeviantArt Downloader

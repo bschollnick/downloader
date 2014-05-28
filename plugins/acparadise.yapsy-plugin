@@ -1,0 +1,9 @@
+[Core]
+Name = acparadise
+Module = acparadise
+
+[Documentation]
+Author = Benjamin Schollnick
+Version = 0.1
+Website = http://lotsofplugins.com
+Description = AC Paradise Downloader
