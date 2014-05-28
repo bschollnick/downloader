@@ -160,7 +160,8 @@ class PluginOne(IPlugin):
                             #
                             #   Remove thumbnail 
                             #
-                            file_to_download = y["src"].replace("-t", "").strip()
+                            file_to_download = y["src"].replace("-t", "")
+                            file_to_download = file_to_download.strip()
                             file_to_download = common.clean_filename(\
                                                 file_to_download,
                                                 max_length=240)
@@ -182,8 +183,8 @@ class PluginOne(IPlugin):
                                         options.download_folder + 
                                         costume_name + os.sep +
                                         os.path.split(file_to_download)[1]):
-                                status.add_skipped(filename=file_to_download,
-                                                   options=options)
+                                status.add_skipped(file_to_download,
+                                                   options)
                             else:                                       
                                 #
                                 #   Download file
@@ -194,11 +195,11 @@ class PluginOne(IPlugin):
                                         fileName=os.path.split(file_to_download)[1],
                                         download_folder=options.download_folder +
                                         costume_name + os.sep, timeout=45):
-                                    status.add_download(filename=file_to_download,
-                                                        options=options)
+                                    status.add_download(file_to_download,
+                                                        options)
                                 else:
-                                    status.add_error(filename=file_to_download,
-                                                     options=options)
+                                    status.add_error(file_to_download,
+                                                     options)
                 
             counter += 1
 

@@ -157,7 +157,8 @@ class PluginOne(IPlugin):
             found_urls.append((folder_name, folder_url))
             #   <a href="http://ulorinvex.deviantart.com/gallery/977878" 
             #               class="rs-customicon-link">
-            #<img src="http://a.deviantart.net/gallerythumbs/8/7/000977878.jpg?3"
+            #<img src="http://a.deviantart.net/gallerythumbs/8/
+            #               7/000977878.jpg?3"
             #        alt="">
             #   </a>
 
@@ -234,14 +235,14 @@ class PluginOne(IPlugin):
                 status.return_downloads() >= options.downloadlimit:
                 print "X"
                 return status
-            if subgallery_name <> None:
+            if subgallery_name != None:
                 subgallery_dl_path = download_path + os.sep +\
                                  common.clean_filename(subgallery_name) + os.sep
             status = self.download_gallery(subgallery_url,
                                            subgallery_dl_path,
                                            options, 
                                            status)
-            time.sleep (1)
+            time.sleep(1)
 #        current_webpage = common.fetch_webpage(session=self.session,
 #                                               url=gallery_url, 
 #                                               timeout=45)
@@ -274,7 +275,7 @@ class PluginOne(IPlugin):
                                               url=gallery_url)
         subfolder = BeautifulSoup(subfolder_data)
         
-        if gallery_url.find ("?offset") == -1:
+        if gallery_url.find("?offset") == -1:
             print "\n\tProcessing Gallery - %30s" % (gallery_url)
         else:
             print "R"
@@ -323,16 +324,16 @@ class PluginOne(IPlugin):
                 else:
                     status.add_error(filename=file_to_download,
                                      options=options)
-        time.sleep (.10)
+        time.sleep(.10)
             
         next_data = subfolder.find_all('li', {'class':'next'})
         if next_data:
-            next_data = next_data[0].find ("a", {"class":"away"})
+            next_data = next_data[0].find("a", {"class":"away"})
             if next_data != None:
                 next_data = next_data.get("href")
                 next_gallery_url = gallery_url[0:(gallery_url.find(r"/gallery"))]\
                     + next_data
-                time.sleep (.5)
+                time.sleep(.5)
                 status = self.download_gallery_images(next_gallery_url,
                                                       download_path,
                                                       options,

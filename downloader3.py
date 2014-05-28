@@ -104,8 +104,8 @@ def make_script_file(options):
     """
     try:
         script_name = "update_capture.command"
-        if not os.path.exists (options.download_folder +
-                               os.sep + script_name):
+        if not os.path.exists(options.download_folder +
+                              os.sep + script_name):
             update_script = open(options.download_folder +
                                  os.sep + script_name,
                                  "w")

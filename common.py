@@ -1,13 +1,12 @@
 """
 Downloader Plugin for acparadise.com.
 """
-#   http://stackoverflow.com/questions/15997865/beautifulsoup-cant-extract-src-attribute-from-img-tag
 import httplib
 import os
 import random
 import requests
 import sys
-import unicodedata
+import unidecode
 import urllib2
 
 USERAGENTS = (
@@ -75,23 +74,16 @@ def fetch_webpage(session, url, timeout=30, binary=False, headers=None):
         
     except urllib2.HTTPError:
         print "Bad URL? - %s" % url
-        error = True
     except urllib2.URLError:
         print "Bad URL? - %s" % url
-        error = True
     except httplib.BadStatusLine:
         print "Bad HTTP Status Line?"
-        error = True
     except httplib.IncompleteRead:
         print "Incomplete Read"
-        error = True
     except requests.exceptions.ConnectionError:
         print "Connection Error"
-        error = True
     except requests.exceptions.Timeout:
         print "Timeout"
-        error = True        
-
     return 
         
  
@@ -110,38 +102,44 @@ def setup_requests(session, base_url):
     fetch_webpage(session, url=base_url, timeout=60)
     return session
     
-"""
-Sanitize the filename
+def clean_filename(filename, max_length=0, unicode_filter=True):
+    """
+    Sanitize the filename
 
-http://stackoverflow.com/questions/1207457/
-    convert-unicode-to-a-string-in-python-containing-extra-symbols
+    """
+    filename = urllib2.unquote(filename)
 
-http://stackoverflow.com/questions/436220/
-    python-is-there-a-way-to-determine-the-encoding-of-text-file
-
-http://stackoverflow.com/questions/7623476/
-    how-can-encodeascii-ignore-through-a-unicodedecodeerror
-"""
-def clean_filename(filename, max_length=0):
-    filename = urllib2.unquote ( filename )
-    #filename = filename.decode('ascii', 'ignore').encode('ascii', 'ignore')
-    #filename = filename.encode('ascii','xmlcharrefreplace')
-    #filename = unicode(filename, "utf-8")
-    #filename = unicodedata.normalize('NFKD',unicode(filename)).encode('ascii', 'ignore')
-        # http://stackoverflow.com/questions/2365411/
-        #           python-convert-unicode-to-ascii-without-errors
-        #
-        #   Changes Unicode to the &xxx; format in the filename
-    import unidecode
-    filename = unidecode.unidecode ( filename )
-
+    if unicode_filter:
+        filename = unidecode.unidecode(filename)
+        
     filename = filename.replace("'", "`").replace(",", "")
     filename = filename.replace('"', "`").replace("#", "")
-    if len(filename) >= 250 and max_length >= 1:
-        filename = filename[1:max_length] + os.path.splitext(filename)[1]
+    if max_length >= 1:
+        filename = filename[:max_length] + os.path.splitext(filename)[1]
     return filename
-        
 
+def replace_all(text, dic):
+    """
+    Helper function for Clean Filename2
+    """
+    for i, j in dic.iteritems():
+        text = text.replace(i, j)
+    return text
+ 
+def clean_filename2(filename, 
+                    max_length=0, 
+                    replacements={'"':"`", "'":"`", ",":"", "#":""}, 
+                    unicode_filter=True):
+    """
+    Looking to clean up clean_filename, and make it more generic
+    """
+    filename = replace_all(urllib2.unquote(filename), replacements)
+    if unicode_filter:
+        filename = unidecode.unidecode(filename)
+    if max_length >= 1:
+        filename = filename[:max_length] + os.path.splitext(filename)[1]
+    return filename        
+    
 def download_file(session,
                   url,
                   fileName=None,
@@ -159,10 +157,8 @@ def download_file(session,
     http://stackoverflow.com/questions/13137817/
             how-to-download-image-using-requests
     """
-      
     headers = {'Referer': url,
                'User-Agent' : random.choice(USERAGENTS)}
-
     downloaded = False
     error = False
     try:
@@ -192,33 +188,36 @@ def download_file(session,
     if error:
         return False
         
-    if not error and r.ok:
+    if r.ok:
         downloaded = True
         try:
             #   http://stackoverflow.com/questions/16694907/
             #   how-to-download-large-file-in-python-with-requests-py
             with open(download_folder + fileName, "wb") as f:
-                for chunk in r.iter_content (chunk_size=256):
+                for chunk in r.iter_content(chunk_size=256):
                     if chunk:
                         f.write(chunk)
                 f.flush()
-#            local_file = open(download_folder + fileName, "wb")
-#           local_file.write(r.content)
-#            local_file.close()
         except IOError:
             print "\n Error Writing %s" % fileName
         finally:   
             pass
 
-        return downloaded
+    return downloaded
 
-class   status:
+class   status(object):
+    """
+    Status Counter for downloader
+    """
     def __init__(self):
         self.total_downloads = 0
         self.total_errors = 0
         self.total_skipped = 0
         
     def add_download(self, filename, options):
+        """
+        Increment the download counter
+        """
         self.total_downloads += 1
         if options.silent:
             pass
@@ -232,9 +231,15 @@ class   status:
         return
         
     def return_downloads(self):
+        """
+        Return the download counter
+        """
         return self.total_downloads
         
     def add_error(self, filename, options):
+        """
+        Increment the error counter
+        """
         self.total_errors += 1
         if options.silent:
             pass
@@ -248,9 +253,15 @@ class   status:
         return
 
     def return_errors(self):
+        """
+        return the download counter
+        """
         return self.total_errors
          
     def add_skipped(self, filename, options):
+        """
+        Increment the add counter
+        """
         self.total_skipped += 1
         if options.silent:
             pass
@@ -264,7 +275,13 @@ class   status:
         return
 
     def return_skipped(self):
+        """
+        return the download counter
+        """
         return self.total_skipped
     
     def return_counts(self):
+        """
+        return all the counters
+        """
         return (self.total_downloads, self.total_skipped, self.total_errors)
