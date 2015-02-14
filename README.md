@@ -1,4 +1,4 @@
 downloader
 ==========
 
-website scrapper based of a plugin infrastructure
+website scrapper, with a plugin infrastructure.
