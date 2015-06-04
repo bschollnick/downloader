@@ -5,6 +5,12 @@ import httplib
 import os
 import random
 import requests
+try:
+	import requests_cache
+	RCACHE = True
+except ImportError:
+	RCACHE = False
+
 import sys
 import unidecode
 import urllib2
@@ -21,11 +27,27 @@ USERAGENTS = (
     )
 
 
-def post_webpage(session, url, data={}, timeout=30, binary=False):
+def is_int(value_to_test):
+    """
+    Test to see if string is an integer.
+
+    If integer, returns True.
+    If not integer, returns False.
+
+    note, exception tracking tests to be slower!
+    """
+    if value_to_test.isdigit():
+        return True
+    else:
+        return False
+
+def post_webpage(session, url, data=None, timeout=30, binary=False):
     """
     post the webpage at url.
     This returns the actual page text for scraping.
     """
+    if data == None:
+        return
     error = False
     try:
         page = session.post(url, data=data, timeout=timeout)
@@ -46,17 +68,21 @@ def post_webpage(session, url, data={}, timeout=30, binary=False):
         error = True
     except requests.exceptions.Timeout:
         print "Timeout"
-        error = True        
+        error = True
 
     if error:
-        return 
-        
+        return
+
     if not binary:
         return page.text
     else:
         return page.contents
 
-def fetch_webpage(session, url, timeout=30, binary=False, headers=None):
+def fetch_webpage(session,
+                  url,
+                  timeout=30,
+                  binary=False,
+                  headers=None):
     """
     Fetch the webpage at url.
     This returns the actual page text for scraping.
@@ -65,13 +91,21 @@ def fetch_webpage(session, url, timeout=30, binary=False, headers=None):
         if not headers:
             headers = {'User-Agent': USERAGENTS[7],
                        'Referer' : url}
-        
-        page = session.get(url, timeout=timeout, headers=headers)
+
+#        if cookie != None:
+#        	page = session.get(url,
+#        	                   timeout=timeout,
+#        	                   headers=headers,
+#        	                   cookies=cookie)
+#        else:
+#        print session.cookies
+      	page = session.get(url, timeout=timeout, headers=headers)
+
         if not binary:
             return page.text
         else:
             return page.contents
-        
+
     except urllib2.HTTPError:
         print "Bad URL? - %s" % url
     except urllib2.URLError:
@@ -84,9 +118,9 @@ def fetch_webpage(session, url, timeout=30, binary=False, headers=None):
         print "Connection Error"
     except requests.exceptions.Timeout:
         print "Timeout"
-    return 
-        
- 
+    return
+
+
     #
     #
     #
@@ -95,26 +129,24 @@ def setup_requests(session, base_url):
     This initializes and performs a test fetch to the website to prime
     requests, and setup the session.
     """
-#    headers = {'User-Agent':    USERAGENTS[7],
-#               'Referer'   :   base_url}
-#    session.get(base_url, headers=headers)
     session = requests.session()
+    if RCACHE:
+    	requests_cache.install_cache("downloader_cache")
     fetch_webpage(session, url=base_url, timeout=60)
     return session
-    
+
 def clean_filename(filename, max_length=0, unicode_filter=True):
     """
     Sanitize the filename
-
     """
     filename = urllib2.unquote(filename)
 
     if unicode_filter:
         filename = unidecode.unidecode(filename)
-        
+
     filename = filename.replace("'", "`").replace(",", "")
     filename = filename.replace('"', "`").replace("#", "")
-    if max_length >= 1:
+    if len(filename) >= max_length >= 1:
         filename = filename[:max_length] + os.path.splitext(filename)[1]
     return filename
 
@@ -125,10 +157,10 @@ def replace_all(text, dic):
     for i, j in dic.iteritems():
         text = text.replace(i, j)
     return text
- 
-def clean_filename2(filename, 
-                    max_length=0, 
-                    replacements={'"':"`", "'":"`", ",":"", "#":""}, 
+
+def clean_filename2(filename,
+                    max_length=0,
+                    replacements={'"':"`", "'":"`", ",":"", "#":"", '/':"-", ":":"-", "?":"", ">":"-", "<":"-"},
                     unicode_filter=True):
     """
     Looking to clean up clean_filename, and make it more generic
@@ -138,38 +170,48 @@ def clean_filename2(filename,
         filename = unidecode.unidecode(filename)
     if max_length >= 1:
         filename = filename[:max_length] + os.path.splitext(filename)[1]
-    return filename        
-    
+    return filename
+
 def download_file(session,
                   url,
-                  fileName=None,
+                  filename=None,
                   download_folder="",
-                  timeout=30):
+                  timeout=30,
+                  cookies=None):
     """
-    Download the file at URL.  
-    
+    Download the file at URL.
+
     Files will be written to download_folder
-    
+
     returns downloaded, and already_exists
-    
+
     rewrite - using info from here?
-    
+
     http://stackoverflow.com/questions/13137817/
             how-to-download-image-using-requests
     """
+    if cookies == None:
+        cookies = {}
     headers = {'Referer': url,
                'User-Agent' : random.choice(USERAGENTS)}
     downloaded = False
     error = False
     try:
-        r = session.get(url, 
-                        headers=headers, 
-                        timeout=timeout,
-                        stream=True)
-    except urllib2.HTTPError:
-        print "Bad URL? - %s" % url
-        error = True
-    except urllib2.URLError:
+        results = session.get(url,
+                              headers=headers,
+                              timeout=timeout,
+                              stream=True)
+        if results.ok:
+            #   http://stackoverflow.com/questions/16694907/
+            #   how-to-download-large-file-in-python-with-requests-py
+            with open(download_folder + filename, "wb") as outf:
+                for chunk in results.iter_content(chunk_size=256):
+                    if chunk:
+                        outf.write(chunk)
+                outf.flush()
+            downloaded = True
+
+    except (urllib2.HTTPError, urllib2.URLError):
         print "Bad URL? - %s" % url
         error = True
     except httplib.BadStatusLine:
@@ -184,24 +226,15 @@ def download_file(session,
     except requests.exceptions.Timeout:
         print "Timeout"
         error = True
-    
+    except requests.exceptions.ChunkedEncodingError:
+        error = True
+        print "Bad chunk"
+    except IOError:
+        error = True
+        print "\n Error Writing %s" % filename
+
     if error:
         return False
-        
-    if r.ok:
-        downloaded = True
-        try:
-            #   http://stackoverflow.com/questions/16694907/
-            #   how-to-download-large-file-in-python-with-requests-py
-            with open(download_folder + fileName, "wb") as f:
-                for chunk in r.iter_content(chunk_size=256):
-                    if chunk:
-                        f.write(chunk)
-                f.flush()
-        except IOError:
-            print "\n Error Writing %s" % fileName
-        finally:   
-            pass
 
     return downloaded
 
@@ -213,7 +246,7 @@ class   status(object):
         self.total_downloads = 0
         self.total_errors = 0
         self.total_skipped = 0
-        
+
     def add_download(self, filename, options):
         """
         Increment the download counter
@@ -229,13 +262,13 @@ class   status(object):
                 if self.total_downloads % 2 == 1:
                     sys.stdout.flush()
         return
-        
+
     def return_downloads(self):
         """
         Return the download counter
         """
         return self.total_downloads
-        
+
     def add_error(self, filename, options):
         """
         Increment the error counter
@@ -257,7 +290,7 @@ class   status(object):
         return the download counter
         """
         return self.total_errors
-         
+
     def add_skipped(self, filename, options):
         """
         Increment the add counter
@@ -279,7 +312,7 @@ class   status(object):
         return the download counter
         """
         return self.total_skipped
-    
+
     def return_counts(self):
         """
         return all the counters

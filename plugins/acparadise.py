@@ -13,7 +13,7 @@ from yapsy.IPlugin import IPlugin
 website_base = "http://www.acparadise.com/"
 website_cosplayer_index = website_base + \
                         "/acp/display.php?a=%s&t=costumes&page=%s"
-                        
+
 website_base_url = "http://www.acparadise.com/acp/display.php?c=%s"
 website_photo_base = "http://cosplayers.acparadise.com"
 
@@ -25,12 +25,12 @@ plugin_name = "acparadise"
 #   http://www.acparadise.com/acp/display.php?c=63356
 #   http://www.acparadise.com/acp/display.php?c=47851
 #   http://www.acparadise.com/acp/display.php?c=59294
-#   
+#
 #   http://www.acparadise.com/acp/display.php?a=89665&t=costumes    # 1 costume
 #   http://www.acparadise.com/acp/display.php?a=89607
 #   http://www.acparadise.com/acp/display.php?a=89576
 #   http://www.acparadise.com/acp/display.php?a=11917&t=costumes&page=6
-#   
+#
 #
 #
 #   "Folder" for each cosplay, scrape from website_cosplayer_index
@@ -55,45 +55,45 @@ plugin_name = "acparadise"
 #   continue until out of thumbtop's.
 #
 #   Uncertain about multiple pages, haven't found one yet.
-                                    
+
 class PluginOne(IPlugin):
     """
     Actual Plugin for the Downloader package.
-    
-    This contains all the customizable content for the cfakes website.
+
+    This contains all the customizable content for the website.
     """
     def __init__(self):
         self.session = requests.session()
-        
+
     def parser_options(self, parser):
         """
             Add the parser options for this plugin
         """
         parser.add_option("--ac",
-                          action="store_true", 
+                          action="store_true",
                           dest="acparadise",
                           default=False,
                           help="Download from AC Paradise")
         return parser
-    
+
     def print_name(self):
         """
-            Example function from yapsy-example.  
+            Example function from yapsy-example.
         """
         print plugin_name
 
     def download_acp_cosplayer_index(self, url, timeout):
         """
             Return the cosplay links on the cosplayers index page.
-            
-            
+
+
         """
         current_webpage = common.fetch_webpage(\
                             session=self.session,
                             url=url,
                             timeout=timeout)
         soup = BeautifulSoup(current_webpage)
-        links = soup.find_all("div", {"class": "thumbdescription"}) 
+        links = soup.find_all("div", {"class": "thumbdescription"})
         return links
 
 
@@ -108,11 +108,11 @@ class PluginOne(IPlugin):
         crop_left = text.find('">', start_dnumber)+2
         crop_right = text.find('</a></div>', start_dnumber)
         costume_name = text[crop_left:crop_right].strip().replace(os.sep, "-")
-        costume_name = common.clean_filename(costume_name, 
+        costume_name = common.clean_filename(costume_name,
                                              max_length=0)+\
                                              " - %s"%display_page_number
         return (costume_name, display_page_number)
-        
+
     #
     #   Download Gallery
     #
@@ -120,7 +120,7 @@ class PluginOne(IPlugin):
         """
         #   As of 4/24/2014
         #
-        #   Examples of 
+        #   Examples of
         #
         """
         print "AC Paradise"
@@ -146,7 +146,7 @@ class PluginOne(IPlugin):
                         self.extract_ci_details(x)
                     costume_name = common.clean_filename(costume_name)
 
-                    print "\nCostume name : %s - %s" % (costume_name, 
+                    print "\nCostume name : %s - %s" % (costume_name,
                                                         website_base_url%\
                                                         display_page_number)
                     costume_webpage = common.fetch_webpage(\
@@ -154,18 +154,18 @@ class PluginOne(IPlugin):
                                 url=website_base_url % display_page_number,
                                 timeout=45)
                     costume_soup = BeautifulSoup(costume_webpage)
-                    costume_links = costume_soup.find_all("img")    
+                    costume_links = costume_soup.find_all("img")
                     for y in costume_links:
                         if str(y).find(website_photo_base) != -1:
                             #
-                            #   Remove thumbnail 
+                            #   Remove thumbnail
                             #
                             file_to_download = y["src"].replace("-t", "")
                             file_to_download = file_to_download.strip()
                             file_to_download = common.clean_filename(\
                                                 file_to_download,
                                                 max_length=240)
-                                
+
                                 #
                                 #   Does directory exist?  If not create it
                                 #
@@ -174,25 +174,25 @@ class PluginOne(IPlugin):
                                         costume_name):
                                 os.makedirs(options.download_folder + \
                                             costume_name + os.sep)
-                                                
-                                #   
+
+                                #
                                 #       Check for file already existing,
                                 #        if so, don't download
-                                #   
+                                #
                             if os.path.exists(\
-                                        options.download_folder + 
+                                        options.download_folder +
                                         costume_name + os.sep +
                                         os.path.split(file_to_download)[1]):
                                 status.add_skipped(file_to_download,
                                                    options)
-                            else:                                       
+                            else:
                                 #
                                 #   Download file
                                 #
                                 if common.download_file(\
                                 	    session=self.session,
                                         url=file_to_download,
-                                        fileName=os.path.split(file_to_download)[1],
+                                        filename=os.path.split(file_to_download)[1],
                                         download_folder=options.download_folder +
                                         costume_name + os.sep, timeout=45):
                                     status.add_download(file_to_download,
@@ -200,7 +200,7 @@ class PluginOne(IPlugin):
                                 else:
                                     status.add_error(file_to_download,
                                                      options)
-                
+
             counter += 1
 
             #
@@ -212,5 +212,5 @@ class PluginOne(IPlugin):
         """
             meta function for plugin
         """
-        common.setup_requests(self.session, website_base)   
-            
+        common.setup_requests(self.session, website_base)
+
